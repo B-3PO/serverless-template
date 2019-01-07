@@ -1,0 +1,206 @@
+service: serverless-template
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  timeout: 120
+  memorySize: 512
+  vpc:
+    securityGroupIds:
+      - ${env:SECURITY_GROUP_ID}
+    subnetIds:
+      - ${env:SUBNET_ID}
+      - ${env:SUBNET2_ID}
+
+  environment:
+    DATA_TABLE: ${self:service}-${env:STAGE}-accounts
+    EPILDAP: ${env:EPILDAP}
+    API_ROOT:
+      Fn::Join:
+        - ""
+        - - "https://"
+          - Ref: "ApiGatewayRestApi"
+          - ".execute-api.#{AWS::Region}.amazonaws.com/${env:STAGE}"
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - "dynamodb:*"
+      Resource:
+        - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:service}-${env:STAGE}-accounts
+        - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:service}-${env:STAGE}-accounts/*
+        - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:service}-${env:STAGE}-trials
+        - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:service}-${env:STAGE}-trials/*
+
+plugins:
+  - serverless-pseudo-parameters
+  - serverless-log-forwarding
+  - serverless-plugin-warmup
+  - serverless-openapi-documentation
+  - serverless-dynamodb-local
+  - serverless-offline
+
+package:
+  exclude:
+    - test/**
+
+custom:
+  warmup:
+    enabled: true
+  <<: &authorizer
+    arn: ${env:AUTHORIZER_ARN}
+    identityValidationExpression: ^Bearer +[-0-9a-zA-Z\._]*$
+  logForwarding:
+    destinationARN: ${env:SUMOLOGIC_CLOUDWATCH_ARN}
+    filterPattern: '-START -END -REPORT'
+  serverless-offline:
+    port: 3001
+  cors:
+    origin: '*'
+    headers:
+      - Content-Type
+      - X-Amz-Date
+      - Authorization
+      - Accept-Enconding
+      - X-Api-Key
+      - X-Amz-Security-Token
+      - X-Amz-User-Agent
+      - Access-Control-Allow-Origin
+    allowCredentials: false
+  dynamodb:
+    stages:
+      - local
+    start:
+      port: 8000
+      inMemory: true
+      heapInitial: 200m
+      heapMax: 1g
+      migrate: true
+      seed: true
+      convertEmptyValues: true
+  documentation: ${file(serverless.doc.yml):documentation}
+
+resources:
+  Resources:
+    accountsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: users
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+    trialsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: orders
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: accountId
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+        - IndexName: userId
+          KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+          Projection:
+            ProjectionType: KEYS_ONLY
+          ProvisionedThroughput:
+            ReadCapacityUnits: 5
+            WriteCapacityUnits: 5
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+
+functions:
+  swagger:
+    handler: app/handler.swagger
+    events:
+      - http:
+          path: swagger-ui
+          method: get
+      - http:
+          path: /openapi.json
+          method: get
+          contentHandling: CONVERT_TO_BINARY
+      - http:
+          path: swagger-ui-bundle.js
+          method: get
+          contentHandling: CONVERT_TO_BINARY
+      - http:
+          path: swagger-ui-standalone-preset.js
+          method: get
+          contentHandling: CONVERT_TO_BINARY
+      - http:
+          path: swagger-ui.css
+          method: get
+          contentHandling: CONVERT_TO_BINARY
+
+  get-accounts:
+    handler: app/handler.getAccounts
+    logForwarding:
+      enabled: true
+    events:
+      - http:
+          path: accounts
+          method: get
+          cors: ${self:custom.cors}
+          documentation: ${file(serverless.doc.yml):endpoints.get-accounts}
+
+  get-accounts-invoke:
+    handler: app/handler.getAccounts
+    environment: ${file(./config/env/${self:provider.stage}.yml)}
+    name: ${self:custom.deployVars.STACK}-${env:STAGE}-${self:service}-serverless-example-getAccounts-invoke
+
+  get-account:
+    handler: app/handler.getAccount
+    logForwarding:
+      enabled: true
+    events:
+      - http:
+          path: accounts/{id}
+          method: get
+          cors: ${self:custom.cors}
+          documentation: ${file(serverless.doc.yml):endpoints.get-account}
+
+  create-account:
+    handler: app/handler.createAccount
+    logForwarding:
+      enabled: true
+    events:
+      - http:
+          path: create-account
+          method: post
+          cors: ${self:custom.cors}
+          documentation: ${file(serverless.doc.yml):endpoints.create-account}
+
+  get-active-trials:
+    handler: app/handler.getActiveTrials
+    logForwarding:
+      enabled: true
+    events:
+      - http:
+          path: active-trials
+          method: get
+          cors: ${self:custom.cors}
+          documentation: ${file(serverless.doc.yml):endpoints.get-active-trials}
+
+  create-trial:
+    handler: app/handler.createTrial
+    logForwarding:
+      enabled: true
+    events:
+      - http:
+          path: create-trial
+          method: post
+          cors: ${self:custom.cors}
+          documentation: ${file(serverless.doc.yml):endpoints.create-trial}

@@ -1,0 +1,35 @@
+{
+  "name": "serverless-template",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "setup": "source etc/local.env && serverless dynamodb install -s local && serverless dynamodb start --migrate && node app/utils/fixSwaggerPath.js",
+    "start": "source etc/local.env && serverless offline start -s local",
+    "docs": "source etc/local.env && serverless openapi generate --format json",
+    "cleanup": "kill -9 $(lsof -ti:8000) 2>/dev/null || true",
+    "test": "npm run cleanup && source etc/local.env && (sls dynamodb start -s local) & sleep 5 && ./node_modules/.bin/jest && npm run cleanup"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "eslint": "^5.1.0",
+    "eslint-config-airbnb-base": "^13.0.0",
+    "eslint-plugin-import": "^2.13.0",
+    "dynamoose": "^1.3.0",
+    "pino": "^5.10.3",
+    "pino-pretty": "^2.5.0",
+    "serverless-aws-static-file-handler": "^1.0.0",
+    "serverless-log-forwarding": "^1.3.0",
+    "serverless-plugin-warmup": "^4.2.0-rc.1",
+    "serverless-pseudo-parameters": "^2.4.0",
+    "swagger-ui-dist": "^3.20.3",
+    "uuid": "^3.3.2"
+  },
+  "devDependencies": {
+    "jest": "^23.6.0",
+    "serverless-dynamodb-local": "^0.2.35",
+    "serverless-offline": "^3.31.3",
+    "serverless-openapi-documentation": "^0.4.0"
+  }
+}
