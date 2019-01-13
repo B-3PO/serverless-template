@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "jest": "^23.6.0",
-    "serverless-dynamodb-local": "^0.2.35",
+    "serverless-dynamodb-local": "0.2.30",
     "serverless-offline": "^3.31.3",
     "serverless-openapi-documentation": "^0.4.0"
   }
