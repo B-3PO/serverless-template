@@ -14,7 +14,6 @@ provider:
 
   environment:
     DATA_TABLE: ${self:service}-${env:STAGE}-accounts
-    EPILDAP: ${env:EPILDAP}
     API_ROOT:
       Fn::Join:
         - ""
@@ -95,31 +94,6 @@ resources:
         ProvisionedThroughput:
           ReadCapacityUnits: 5
           WriteCapacityUnits: 5
-    trialsTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: orders
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-          - AttributeName: accountId
-            AttributeType: N
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
-        GlobalSecondaryIndexes:
-        - IndexName: userId
-          KeySchema:
-          - AttributeName: userId
-            KeyType: HASH
-          Projection:
-            ProjectionType: KEYS_ONLY
-          ProvisionedThroughput:
-            ReadCapacityUnits: 5
-            WriteCapacityUnits: 5
-        ProvisionedThroughput:
-          ReadCapacityUnits: 5
-          WriteCapacityUnits: 5
 
 functions:
   swagger:
@@ -155,11 +129,6 @@ functions:
           method: get
           cors: ${self:custom.cors}
           documentation: ${file(serverless.doc.yml):endpoints.get-accounts}
-
-  get-accounts-invoke:
-    handler: app/handler.getAccounts
-    environment: ${file(./config/env/${self:provider.stage}.yml)}
-    name: ${self:custom.deployVars.STACK}-${env:STAGE}-${self:service}-serverless-example-getAccounts-invoke
 
   get-account:
     handler: app/handler.getAccount
