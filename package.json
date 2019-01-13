@@ -4,11 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "setup": "source etc/local.env && serverless dynamodb install -s local && serverless dynamodb start --migrate && node app/utils/fixSwaggerPath.js",
-    "start": "source etc/local.env && serverless offline start -s local",
-    "docs": "source etc/local.env && serverless openapi generate --format json",
+    "setup": "source env/local.env && serverless dynamodb install -s local && serverless dynamodb start --migrate && node app/utils/fixSwaggerPath.js",
+    "start": "source env/local.env && serverless offline start -s local",
+    "docs": "source env/local.env && serverless openapi generate --format json",
     "cleanup": "kill -9 $(lsof -ti:8000) 2>/dev/null || true",
-    "test": "npm run cleanup && source etc/local.env && (sls dynamodb start -s local) & sleep 5 && ./node_modules/.bin/jest && npm run cleanup"
+    "test": "npm run cleanup && source env/local.env && (sls dynamodb start -s local) & sleep 5 && ./node_modules/.bin/jest && npm run cleanup"
   },
   "author": "",
   "license": "ISC",
