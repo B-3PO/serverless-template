@@ -1,3 +1,5 @@
+.serverless
+openapi.json
 # Logs
 logs
 *.log

@@ -3,18 +3,10 @@ service: serverless-template
 provider:
   name: aws
   runtime: nodejs8.10
-  timeout: 120
   memorySize: 512
-  vpc:
-    securityGroupIds:
-      - ${env:SECURITY_GROUP_ID}
-    subnetIds:
-      - ${env:SUBNET_ID}
-      - ${env:SUBNET2_ID}
 
   environment:
     DATA_TABLE: ${self:service}-${env:STAGE}-accounts
-    EPILDAP: ${env:EPILDAP}
     API_ROOT:
       Fn::Join:
         - ""
@@ -27,14 +19,11 @@ provider:
       Action:
         - "dynamodb:*"
       Resource:
-        - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:service}-${env:STAGE}-accounts
-        - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:service}-${env:STAGE}-accounts/*
-        - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:service}-${env:STAGE}-trials
-        - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:service}-${env:STAGE}-trials/*
+        - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:service}-main-${env:STAGE}
+        - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:service}-main-${env:STAGE}/*
 
 plugins:
   - serverless-pseudo-parameters
-  - serverless-log-forwarding
   - serverless-plugin-warmup
   - serverless-openapi-documentation
   - serverless-dynamodb-local
@@ -47,12 +36,6 @@ package:
 custom:
   warmup:
     enabled: true
-  <<: &authorizer
-    arn: ${env:AUTHORIZER_ARN}
-    identityValidationExpression: ^Bearer +[-0-9a-zA-Z\._]*$
-  logForwarding:
-    destinationARN: ${env:SUMOLOGIC_CLOUDWATCH_ARN}
-    filterPattern: '-START -END -REPORT'
   serverless-offline:
     port: 3001
   cors:
@@ -85,38 +68,13 @@ resources:
     accountsTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: users
+        TableName: ${self:service}-main-${env:STAGE}
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: N
         KeySchema:
           - AttributeName: id
             KeyType: HASH
-        ProvisionedThroughput:
-          ReadCapacityUnits: 5
-          WriteCapacityUnits: 5
-    trialsTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: orders
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-          - AttributeName: accountId
-            AttributeType: N
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
-        GlobalSecondaryIndexes:
-        - IndexName: userId
-          KeySchema:
-          - AttributeName: userId
-            KeyType: HASH
-          Projection:
-            ProjectionType: KEYS_ONLY
-          ProvisionedThroughput:
-            ReadCapacityUnits: 5
-            WriteCapacityUnits: 5
         ProvisionedThroughput:
           ReadCapacityUnits: 5
           WriteCapacityUnits: 5
@@ -147,8 +105,6 @@ functions:
 
   get-accounts:
     handler: app/handler.getAccounts
-    logForwarding:
-      enabled: true
     events:
       - http:
           path: accounts
@@ -156,15 +112,8 @@ functions:
           cors: ${self:custom.cors}
           documentation: ${file(serverless.doc.yml):endpoints.get-accounts}
 
-  get-accounts-invoke:
-    handler: app/handler.getAccounts
-    environment: ${file(./config/env/${self:provider.stage}.yml)}
-    name: ${self:custom.deployVars.STACK}-${env:STAGE}-${self:service}-serverless-example-getAccounts-invoke
-
   get-account:
     handler: app/handler.getAccount
-    logForwarding:
-      enabled: true
     events:
       - http:
           path: accounts/{id}
@@ -174,8 +123,6 @@ functions:
 
   create-account:
     handler: app/handler.createAccount
-    logForwarding:
-      enabled: true
     events:
       - http:
           path: create-account
@@ -185,8 +132,6 @@ functions:
 
   get-active-trials:
     handler: app/handler.getActiveTrials
-    logForwarding:
-      enabled: true
     events:
       - http:
           path: active-trials
@@ -196,8 +141,6 @@ functions:
 
   create-trial:
     handler: app/handler.createTrial
-    logForwarding:
-      enabled: true
     events:
       - http:
           path: create-trial
