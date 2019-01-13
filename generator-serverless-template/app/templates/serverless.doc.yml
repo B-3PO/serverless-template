@@ -1,0 +1,113 @@
+documentation:
+  info:
+    version: '1'
+    title: events-library-config
+    description: events-library-config API
+  models:
+    -
+      name: "ErrorResponse"
+      description: "This is an error"
+      contentType: "application/json"
+      schema:
+        type: "object"
+        properties:
+          errorMessage:
+            type: "string"
+          errorType:
+            type: "string"
+          stackTrace:
+            type: "string"
+    -
+      name: "Account"
+      description: "Account object"
+      contentType: "application/json"
+      schema:
+        type: "object"
+        properties:
+          body:
+            type: "object"
+            properties:
+              id:
+                type: "string"
+    -
+      name: "CreateAccount"
+      description: "Create account object"
+      contentType: "application/json"
+      schema:
+        type: "object"
+        properties:
+          body:
+            type: "object"
+            properties:
+endpoints:
+  get-accounts:
+    summary: "Get a list of all accounts"
+    description: "Get a list of all accounts paginated by 100, using lastKey as the offset"
+    queryParams:
+      -
+        name: "lastkey"
+        description: "The key of the last item recieved in the previus call"
+      -
+        name: "limit"
+        description: "limit for pagination. Dewfaults to 100"
+    requestHeaders:
+      -
+        name: "Authorization"
+        description: "Bearer token"
+    methodResponses:
+        -
+          statusCode: "200"
+          responseBody:
+            description: "List of accounts"
+          responseModels:
+            "application/json": "Account"
+        -
+          statusCode: "409"
+          responseModels:
+            "application/json": "ErrorResponse"
+
+  get-account:
+    summary: "Get account"
+    description: "Get account by id"
+    pathParams:
+      -
+        name: "id"
+        description: "account id"
+    requestHeaders:
+      -
+        name: "Authorization"
+        description: "Bearer token"
+    methodResponses:
+        -
+          statusCode: "200"
+          responseBody:
+            description: "Account data"
+          responseModels:
+            "application/json": "Account"
+        -
+          statusCode: "409"
+          responseModels:
+            "application/json": "ErrorResponse"
+
+  create-account:
+    summary: "Create account"
+    description: "Create new account"
+    requestHeaders:
+      -
+        name: "Authorization"
+        description: "Bearer token"
+    requestModels:
+      "application/json": "CreateAccount"
+    methodResponses:
+        -
+          statusCode: "200"
+          responseBody:
+            description: "Created account data"
+          responseModels:
+            "application/json": "account"
+        -
+          statusCode: "409"
+          responseModels:
+            "application/json": "ErrorResponse"
+
+

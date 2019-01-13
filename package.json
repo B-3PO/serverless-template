@@ -13,10 +13,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bluebird": "^3.5.3",
+    "dynamoose": "^1.3.0",
     "eslint": "^5.1.0",
     "eslint-config-airbnb-base": "^13.0.0",
     "eslint-plugin-import": "^2.13.0",
-    "dynamoose": "^1.3.0",
+    "glob": "^7.1.3",
     "pino": "^5.10.3",
     "pino-pretty": "^2.5.0",
     "serverless-aws-static-file-handler": "^1.0.0",

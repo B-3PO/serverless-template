@@ -1,0 +1,212 @@
+service: <%= serviceName -%>
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  memorySize: 512
+<% if (vpc) { -%>
+  vpc:
+    securityGroupIds:
+      - ${env:SECURITY_GROUP_ID}
+    subnetIds:
+      - ${env:SUBNET_ID}
+      - ${env:SUBNET2_ID}
+  environment:
+<% } -%>
+<% if (dynamodb) { -%>
+    DATA_TABLE: ${self:service}-${env:STAGE}-accounts
+<% } -%>
+    API_ROOT:
+      Fn::Join:
+        - ""
+        - - "https://"
+          - Ref: "ApiGatewayRestApi"
+          - ".execute-api.#{AWS::Region}.amazonaws.com/${env:STAGE}"
+
+<% if (dynamodb) { -%>
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - "dynamodb:*"
+      Resource:
+        - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:service}-main-${env:STAGE}
+        - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:service}-main-${env:STAGE}/*
+
+<% } -%>
+plugins:
+  - serverless-pseudo-parameters
+  - serverless-plugin-warmup
+  - serverless-openapi-documentation
+<% if (dynamodb) { -%>
+  - serverless-dynamodb-local
+<% } -%>
+  - serverless-offline
+
+package:
+  exclude:
+    - test/**
+
+custom:
+  warmup:
+    enabled: true
+<% if (authorizer) { -%>
+  <<: &authorizer
+    arn: ${env:AUTHORIZER_ARN}
+    identityValidationExpression: ^Bearer +[-0-9a-zA-Z\._]*$
+    resultTtlInSeconds: 300
+<% } -%>
+<% if (logForwarding) { -%>
+  logForwarding:
+    destinationARN: ${env:LOGFORWARDING_CLOUDWATCH_ARN}
+    filterPattern: '-START -END -REPORT'
+<% } -%>
+  serverless-offline:
+    port: 3001
+  cors:
+    origin: '*'
+    headers:
+      - Content-Type
+      - X-Amz-Date
+      - Authorization
+      - Accept-Enconding
+      - X-Api-Key
+      - X-Amz-Security-Token
+      - X-Amz-User-Agent
+      - Access-Control-Allow-Origin
+    allowCredentials: false
+<% if (dynamodb) { -%>
+  dynamodb:
+    stages:
+      - local
+    start:
+      port: 8000
+      inMemory: true
+      heapInitial: 200m
+      heapMax: 1g
+      migrate: true
+      seed: true
+      convertEmptyValues: true
+<% } -%>
+  documentation: ${file(serverless.doc.yml):documentation}
+
+<% if (dynamodb) { -%>
+resources:
+  Resources:
+    accountsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-main-${env:STAGE}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 5
+          WriteCapacityUnits: 5
+
+<% } -%>
+functions:
+  swagger:
+    handler: app/handler.swagger
+    events:
+      - http:
+          path: swagger-ui
+          method: get
+      - http:
+          path: /openapi.json
+          method: get
+          contentHandling: CONVERT_TO_BINARY
+      - http:
+          path: swagger-ui-bundle.js
+          method: get
+          contentHandling: CONVERT_TO_BINARY
+      - http:
+          path: swagger-ui-standalone-preset.js
+          method: get
+          contentHandling: CONVERT_TO_BINARY
+      - http:
+          path: swagger-ui.css
+          method: get
+          contentHandling: CONVERT_TO_BINARY
+
+  get-accounts:
+    handler: app/handler.getAccounts
+<% if (logForwarding) { -%>
+    logForwarding:
+      enabled: true
+<% } -%>
+    events:
+      - http:
+          path: accounts
+          method: get
+          cors: ${self:custom.cors}
+          documentation: ${file(serverless.doc.yml):endpoints.get-accounts}
+<% if (authorizer) { -%>
+          authorizer: *authorizer
+<% } -%>
+
+  get-account:
+    handler: app/handler.getAccount
+<% if (logForwarding) { -%>
+    logForwarding:
+      enabled: true
+<% } -%>
+    events:
+      - http:
+          path: accounts/{id}
+          method: get
+          cors: ${self:custom.cors}
+          documentation: ${file(serverless.doc.yml):endpoints.get-account}
+<% if (authorizer) { -%>
+          authorizer: *authorizer
+<% } -%>
+
+  create-account:
+    handler: app/handler.createAccount
+<% if (logForwarding) { -%>
+    logForwarding:
+      enabled: true
+<% } -%>
+    events:
+      - http:
+          path: create-account
+          method: post
+          cors: ${self:custom.cors}
+          documentation: ${file(serverless.doc.yml):endpoints.create-account}
+<% if (authorizer) { -%>
+          authorizer: *authorizer
+<% } -%>
+
+  get-active-trials:
+    handler: app/handler.getActiveTrials
+<% if (logForwarding) { -%>
+    logForwarding:
+      enabled: true
+<% } -%>
+    events:
+      - http:
+          path: active-trials
+          method: get
+          cors: ${self:custom.cors}
+          documentation: ${file(serverless.doc.yml):endpoints.get-active-trials}
+<% if (authorizer) { -%>
+          authorizer: *authorizer
+<% } -%>
+
+  create-trial:
+    handler: app/handler.createTrial
+<% if (logForwarding) { -%>
+    logForwarding:
+      enabled: true
+<% } -%>
+    events:
+      - http:
+          path: create-trial
+          method: post
+          cors: ${self:custom.cors}
+          documentation: ${file(serverless.doc.yml):endpoints.create-trial}
+<% if (authorizer) { -%>
+          authorizer: *authorizer
+<% } -%>
